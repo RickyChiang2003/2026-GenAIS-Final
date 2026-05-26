@@ -1,4 +1,5 @@
 # PIG
+> 與官方程式碼幾乎相同
 
 ## Environment  
 You need at least 48GB GPU VRAM, or you should adjust your code (no config file here).
@@ -12,6 +13,7 @@ pip install accelerate==0.25.0 datasets==2.16.1 tokenizers==0.15.0 fschat==0.2.3
 ```
 
 ## Usage
+由於官方的 `easyjailbreak/attacker/` 中的檔案沒寫好 batchsize 設定 (有時直接改 `attack.py` 沒卵用)，因此 OOM 時請先嘗試修改 `easyjailbreak/attacker/` 的檔案中的 batchsize 。(具體修改的檔案則取決於你在 `run.sh` 或 `attack.py` 中選擇的 jailbreak_method )
 ```sh
 # execute the privacy jailbreak attack
 bash run.sh

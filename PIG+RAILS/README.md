@@ -12,6 +12,7 @@ pip install accelerate==0.25.0 datasets==2.16.1 tokenizers==0.15.0 fschat==0.2.3
 ```
 
 ## Usage
+
 ```sh
 # execute the privacy jailbreak attack
 bash run.sh

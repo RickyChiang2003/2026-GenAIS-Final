@@ -2,9 +2,10 @@
 > NTU GenAIS Final Project
 
 ## Introduction
-分 branch 好麻煩喔，每個人不同的東西直接放各自資料夾即可  
-像是 `PIG+RAILS` 就是本來的 PIG 論文加上 RAILS 論文的方法  
-記得不要把大檔案或輸出結果、log 之類的丟上來  
+
+分 branch 好麻煩喔，請大家自己的東西直接放各自資料夾即可，這裡提供 `PIG+RAILS` 和 `PIG` 作為示範。  
+其中 `PIG/` 是被江融其 debug 過的[ PIG 官方 code ](https://github.com/redwyd/PrivacyJailbreak)的優化版。強烈建議可以先把 `PIG/` 跑起來。  
+模型請自己用 `hf download` 載進 `models/` 資料夾裡 (有被寫在 `.gitignore` 中了)，不然就要去改程式碼裡的路徑。  
 
 ## Links
 
