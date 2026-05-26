@@ -1,4 +1,4 @@
-# 2026 GenAIS Final - Black Box PIG (Privacy Jailbreak Attack on LLMs via Gradient-based Iterative In-Context Optimization)
+# 2026 GenAIS Final - Black Box PIG 
 > NTU GenAIS Final Project
 
 ## Introduction
