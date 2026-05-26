@@ -1,4 +1,4 @@
-# PIG+RAILS
+# PIG
 
 ## Environment  
 You need at least 48GB GPU VRAM, or you should adjust your code (no config file here).
