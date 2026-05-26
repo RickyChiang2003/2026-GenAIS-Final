@@ -1,0 +1,20 @@
+# torch==2.0.1 --index-url https://download.pytorch.org/whl/cu118
+
+huggingface_hub==0.19.4
+transformers==4.36.2
+accelerate==0.25.0
+datasets==2.16.1
+tokenizers==0.15.0
+
+fschat==0.2.34
+protobuf==3.20.3
+sentencepiece
+jsonlines
+openai>=1.0.0
+
+numpy<2.0.0
+pandas
+scipy
+anthropic 
+google-generativeai
+scikit-learn
