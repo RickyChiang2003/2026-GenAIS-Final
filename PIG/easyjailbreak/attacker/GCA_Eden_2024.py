@@ -31,7 +31,7 @@ class GCA(AttackerBase):
         dataset_name,
         jailbreak_prompt_length: int = 20,
         num_turb_sample: int = 512,
-        batchsize: int = 32,
+        batchsize: int = 8,
         top_k: int = 256,
         max_num_iter: int = 500,
         is_universal: bool = False

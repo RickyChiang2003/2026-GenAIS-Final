@@ -6,7 +6,7 @@ It includes the HuggingfaceModel class that extends the functionality of the Whi
 import sys
 from .model_base import WhiteBoxModelBase
 import warnings
-from transformers import AutoModelForCausalLM, AutoTokenizer
+from transformers import AutoModelForCausalLM, AutoTokenizer, BitsAndBytesConfig
 import functools
 import torch
 from fastchat.conversation import get_conv_template
@@ -278,7 +278,15 @@ def from_pretrained(model_name_or_path: str, model_name: str, tokenizer_name_or_
     """
     if dtype is None:
         dtype = 'auto'
-    model = AutoModelForCausalLM.from_pretrained(model_name_or_path, device_map='auto', trust_remote_code=True, low_cpu_mem_usage=True, torch_dtype=dtype).eval()
+
+    quantization_config = BitsAndBytesConfig(
+        load_in_4bit=True,
+        bnb_4bit_compute_dtype=torch.float16,  # 運算時保持 float16 確保梯度精度
+        bnb_4bit_use_double_quant=True,
+        bnb_4bit_quant_type="nf4"
+    )
+
+    model = AutoModelForCausalLM.from_pretrained(model_name_or_path, device_map='auto', trust_remote_code=True, low_cpu_mem_usage=True, torch_dtype=dtype, quantization_config=quantization_config).eval()
     if tokenizer_name_or_path is None:
         tokenizer_name_or_path = model_name_or_path
     tokenizer = AutoTokenizer.from_pretrained(tokenizer_name_or_path, trust_remote_code=True)

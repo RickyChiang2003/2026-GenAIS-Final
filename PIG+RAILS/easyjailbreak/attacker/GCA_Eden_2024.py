@@ -20,6 +20,9 @@ import logging
 from typing import Optional
 from tqdm import tqdm
 
+import random  
+import copy
+
 class GCA(AttackerBase):
     def __init__(
         self,
@@ -31,7 +34,7 @@ class GCA(AttackerBase):
         dataset_name,
         jailbreak_prompt_length: int = 20,
         num_turb_sample: int = 512,
-        batchsize: int = 32,
+        batchsize: int = 8,
         top_k: int = 256,
         max_num_iter: int = 500,
         is_universal: bool = False
@@ -84,7 +87,7 @@ class GCA(AttackerBase):
         ans = self.jailbreak_datasets
         self.jailbreak_datasets = dataset
         return ans
-
+    '''
     def attack(self):
         logging.info("Jailbreak started!")
         try:
@@ -166,3 +169,147 @@ class GCA(AttackerBase):
 
         self.log_results(cnt_attack_success)
         logging.info("Jailbreak finished!")
+    '''
+    def attack(self):
+        logging.info("Jailbreak started! (PIG + RAILS Hybrid Selection)")
+        try:
+            all_instance_pii_token_id_dict = dict()
+            for instance in self.jailbreak_datasets:
+                one_instance_pii_token_id_dict = defaultdict(list)
+                instance.pii_slice_dict = dict(filter(lambda x: x[1] is not None, instance.pii_slice_dict.items()))
+                instance.pii_slice_dict = convert_list_to_slice(instance.pii_slice_dict)
+                for key, value in instance.pii_slice_dict.items():
+                    one_instance_pii_token_id_dict['pii_token_id_list'].extend(
+                        slice_to_token_id(self.attack_model, instance.context, value)
+                    )
+                # 去除列表中重复元素（用于任意位置的token替换）
+                one_instance_pii_token_id_dict['pii_token_id_list'] = list(set(one_instance_pii_token_id_dict['pii_token_id_list']))
+                all_instance_pii_token_id_dict[instance['idx']] = one_instance_pii_token_id_dict
+
+                input_ids, _, _, response_slice = model_utils.encode_trace(
+                    self.attack_model,
+                    instance.query,
+                    f'{instance.context} {{query}}',
+                    instance.reference_responses[0]
+                )
+
+                if instance.jailbreak_prompt is None:
+                    instance.jailbreak_prompt = f'{instance.context} {{query}}'
+
+                instance.token_id_length = len(input_ids[0])
+
+            unbreaked_dataset = self.jailbreak_datasets
+
+            # ==========================================
+            # RAILS 1: 初始化 History Buffer
+            # ==========================================
+            history_buffer = defaultdict(list)  # 結構: { instance_idx: [(loss, prompt, epoch), ...] }
+            instance_map = {}                   # 結構: { instance_idx: instance } 備份用
+
+            # ----------------- 白盒優化階段 -----------------
+            for epoch in tqdm(range(self.max_num_iter), desc="White-box Optimization"):
+                logging.info(f"Current PIG epoch: {epoch}/{self.max_num_iter}")
+                
+                unbreaked_dataset = self.mutator(unbreaked_dataset, all_instance_pii_token_id_dict)
+                logging.info(f"Mutation: {len(unbreaked_dataset)} new instances generated.")
+                
+                unbreaked_dataset = self.selector.select(unbreaked_dataset)
+                logging.info(f"Selection: {len(unbreaked_dataset)} instances selected.")
+
+                # ==========================================
+                # 關閉迴圈內的 API 呼叫，改為紀錄 RAILS 軌跡
+                # ==========================================
+                for instance in unbreaked_dataset:
+                    prompt = instance.jailbreak_prompt.replace('{query}', instance.query)
+                    
+                    # 抓取這輪算出的 proxy loss，若無則預設無限大
+                    current_loss = getattr(instance, '_loss', float('inf'))
+                    
+                    # 紀錄到 history buffer 中
+                    history_buffer[instance.idx].append((current_loss, prompt, epoch))
+                    instance_map[instance.idx] = instance
+                
+                # 轉移攻擊不需要在每次 Epoch 都驗證，因此我們假裝都沒成功，把全體丟進下一個 epoch 繼續優化
+                self.jailbreak_datasets = unbreaked_dataset
+
+                # 選擇性存檔 (可以把每輪的狀態先寫下來，以防中斷)
+                with open(self.save_path + f'/epoch_{epoch}.jsonl', 'w') as f:
+                    for new_instance in unbreaked_dataset:
+                        f.write(json.dumps(new_instance.to_dict(), ensure_ascii=False) + '\n')
+
+            # ----------------- 黑盒測試階段 -----------------
+            # ==========================================
+            # RAILS 2: 混合篩選 (Hybrid Selection)
+            # ==========================================
+            logging.info("Optimization finished. Starting RAILS Hybrid Selection and Black-box testing...")
+            K = 20                 # RAILS 挑選 20 個候選者
+            K_exploit = K // 2     # 10 個給 Exploitation (最低 Loss)
+            K_explore = K - K_exploit # 10 個給 Exploration (時間序列隨機)
+            
+            final_test_results = defaultdict(list)
+
+            for idx, records in history_buffer.items():
+                original_instance = instance_map[idx]
+                
+                # 1. Exploitation: 取出歷史中 Loss 最低的 K_exploit 個
+                sorted_records = sorted(records, key=lambda x: x[0])
+                best_exploit = sorted_records[:K_exploit]
+                
+                # 2. Exploration: 從剩餘的 Epoch 中均勻抽樣
+                picked_prompts = set([x[1] for x in best_exploit])
+                remaining_records = [x for x in records if x[1] not in picked_prompts]
+                
+                epoch_dict = defaultdict(list)
+                for r in remaining_records:
+                    epoch_dict[r[2]].append(r)
+                
+                explore_candidates = []
+                available_epochs = list(epoch_dict.keys())
+                random.shuffle(available_epochs) # 隨機打亂時間軌跡
+                
+                for ep in available_epochs:
+                    if len(explore_candidates) >= K_explore:
+                        break
+                    explore_candidates.append(random.choice(epoch_dict[ep]))
+                
+                # 結合兩者，獲得最終的 20 個 Prompts
+                final_candidates = best_exploit + explore_candidates
+                
+                # ==========================================
+                # RAILS 3: 對目標黑盒模型進行最終測試
+                # ==========================================
+                logging.info(f"Testing {len(final_candidates)} candidates for instance {idx} on Target Model...")
+                if self.dataset_name == 'trustllm':
+                    self.target_model.set_system_message(original_instance.system_message)
+                
+                for cand_loss, cand_prompt, cand_epoch in final_candidates:
+                    # 正式發送 API 請求 / Inference
+                    response = self.target_model.generate(cand_prompt)
+                    
+                    # 建立新的實例以儲存測試結果 (避免覆蓋)
+                    test_instance = copy.deepcopy(original_instance)
+                    test_instance.jailbreak_prompt = cand_prompt
+                    test_instance.target_responses = [response]
+                    test_instance._loss = cand_loss  # 保留參考 Loss
+                    
+                    final_test_results[idx].append(test_instance)
+
+            # ==========================================
+            # RAILS 4: 儲存黑盒測試結果，相容 eval.py
+            # ==========================================
+            logging.info("Saving final RAILS test results...")
+            for i in range(K):
+                # 我們把 20 次黑盒測試結果，偽裝成 20 個 epoch 檔寫出
+                # 這樣 eval.py 就能用它原生的「只要一次成功就算成功(OR)」邏輯來處理
+                with open(self.save_path + f'/final_test_shot_{i}.jsonl', 'w') as f:
+                    for idx, instances in final_test_results.items():
+                        if i < len(instances):
+                            f.write(json.dumps(instances[i].to_dict(), ensure_ascii=False) + '\n')
+                            
+            cnt_attack_success = len(self.jailbreak_datasets) # 隨便給個值防止原版 log_results 報錯
+
+        except KeyboardInterrupt:
+            logging.info("Jailbreak interrupted by user!")
+
+        self.log_results(cnt_attack_success)
+        logging.info("RAILS Transfer Attack finished!")

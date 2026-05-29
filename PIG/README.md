@@ -9,7 +9,11 @@ conda create -n PIG python=3.9.19
 conda activate PIG
 pip install torch==2.0.1 --index-url https://download.pytorch.org/whl/cu118
 pip install transformers==4.36.2 
-pip install accelerate==0.25.0 datasets==2.16.1 tokenizers==0.15.0 fschat==0.2.34 protobuf==3.20.3 sentencepiece jsonlines openai>=1.0.0 numpy<2.0.0 pandas scipy anthropic google-generativeai scikit-learn nltk
+pip install accelerate==0.25.0 datasets==2.16.1 tokenizers==0.15.0 fschat==0.2.36 protobuf==3.20.3 sentencepiece jsonlines openai>=1.0.0 numpy<2.0.0 pandas scipy anthropic google-generativeai scikit-learn nltk bitsandbytes==0.40.0
+# for llama-3
+git clone https://github.com/lm-sys/FastChat.git
+cd FastChat
+pip3 install -e ".[model_worker,webui]"
 ```
 
 ## Usage

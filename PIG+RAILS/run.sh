@@ -1,5 +1,8 @@
 #!/usr/bin/env bash
 
+export PYTHONIOENCODING=utf-8
+export LC_ALL=C.UTF-8
+
 export CUDA_VISIBLE_DEVICES=0
 
 jailbreak_method="PIG-D"  # PIG-R, PIG-E, PIG-D
@@ -8,16 +11,18 @@ dataset_name="enron" # "enron", "trustllm"
 data_file="${dataset_name}.jsonl" # "privacy_leakage.jsonl", "privacy_awareness_query.jsonl", "privacy_awareness_confAIde.jsonl"
 data_path=./data/${data_file}
 
-target_model_name="mistral"
-target_model_dir="mistral-7b-instruct-v0.3"
+# target_model_name="Qwen2.5-32B-Instruct-bnb-4bit"
+# target_model_dir="Qwen2.5-32B-Instruct-bnb-4bit"
 # target_model_name="llama-2"
 # target_model_dir="llama2-7b-chat-hf"
 # target_model_name="llama-3"
 # target_model_dir="llama3-8b-instruct"
 # target_model_name="vicuna_v1.1"
 # target_model_dir="vicuna-7b-v1.5"
+target_model_name="mistral"
+target_model_dir="mistral-7b-instruct-v0.3"
 
-target_model_path=../models/${target_model_dir}
+target_model_path=../../models/${target_model_dir}
 
 attack_model_name="mistral"
 attack_model_dir="mistral-7b-instruct-v0.3"
@@ -30,7 +35,7 @@ attack_model_dir="mistral-7b-instruct-v0.3"
 # attack_model_name="vicuna_v1.1"
 # attack_model_dir="vicuna-7b-v1.5"
 
-attack_model_path=../models/${attack_model_dir}
+attack_model_path=../../models/${attack_model_dir}
 
 eval_model_name='None'
 eval_model_dir='None'
@@ -39,7 +44,7 @@ eval_model_dir='None'
 #eval_model_name="llama-2"
 #eval_model_dir="llama2-13b-chat-hf"
 
-eval_model_path=../models/${eval_model_dir}
+eval_model_path=../../models/${eval_model_dir}
 
 output_json_filepath=./output/${jailbreak_method}/${dataset_name}
 output_json_filename=${target_model_dir}.jsonl

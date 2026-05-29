@@ -17,7 +17,7 @@ target_model_dir="mistral-7b-instruct-v0.3"
 # target_model_name="vicuna_v1.1"
 # target_model_dir="vicuna-7b-v1.5"
 
-target_model_path=../models/${target_model_dir}
+target_model_path=../../models/${target_model_dir}
 
 attack_model_name="mistral"
 attack_model_dir="mistral-7b-instruct-v0.3"
@@ -30,7 +30,7 @@ attack_model_dir="mistral-7b-instruct-v0.3"
 # attack_model_name="vicuna_v1.1"
 # attack_model_dir="vicuna-7b-v1.5"
 
-attack_model_path=../models/${attack_model_dir}
+attack_model_path=../../models/${attack_model_dir}
 
 eval_model_name='None'
 eval_model_dir='None'
@@ -39,7 +39,7 @@ eval_model_dir='None'
 #eval_model_name="llama-2"
 #eval_model_dir="llama2-13b-chat-hf"
 
-eval_model_path=../models/${eval_model_dir}
+eval_model_path=../../models/${eval_model_dir}
 
 output_json_filepath=./output/${jailbreak_method}/${dataset_name}
 output_json_filename=${target_model_dir}.jsonl
